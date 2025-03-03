@@ -276,7 +276,7 @@ def main():
                     query,
                     st.session_state.memory)
                 
-                st.write(st.session_state.memory.chat_memory.messages)
+                #st.write(st.session_state.memory.chat_memory.messages)
                 
                 end_time = time.time()
                 total_time = (end_time - start_time)
