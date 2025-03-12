@@ -71,15 +71,17 @@ def get_conversation_chain(vectorstore,data_list,query,st_memory):
         "context": lambda x: multiqueryretriever.invoke(x['question']),
         "question": lambda x: x['question'],
         'chat_history' : lambda x: x['chat_history']
-    }) | prompt | llm | StrOutputParser())
+    }) 
+    | prompt | llm | StrOutputParser())
 
 
     #실시간 출력(Stream)
     response = ''
     sentence = ''
 
-    response = chain.invoke({'question': query,'chat_history': memory.chat_memory.messages})
-
+    response = chain.invoke({'question': query,
+                             'chat_history': memory.load_memory_variables({})['chat_history']})
+    
     if '\n' not in response:
         st.write(response)
 
@@ -189,7 +191,9 @@ def main():
 
     #윈도우 크기 k를 지정하면 최근 k개의 대화만 기억하고 이전 대화는 삭제
     if "memory" not in st.session_state:
-        st.session_state.memory = ConversationBufferWindowMemory(memory_key="chat_history", k=4) 
+        st.session_state.memory = ConversationBufferWindowMemory(memory_key="chat_history", 
+                                                                 k=4,
+                                                                 return_messages=True) 
 
     with st.sidebar:
         gemini_api_key = st.text_input('Gemini_API_KEY를 입력하세요.', key="langchain_search_api_gemini", type="password")
@@ -209,7 +213,10 @@ def main():
         if data_clear :=st.button("대화 클리어"):
             st.session_state.conversation = None
             st.session_state.chat_history = []
-            st.session_state.memory = ConversationBufferWindowMemory(memory_key="chat_history", k=4)
+            st.session_state.memory = ConversationBufferWindowMemory(memory_key="chat_history", 
+                                                                     k=4,
+                                                                     return_messages=True)
+            
 
         vector_option = ["EUCLIDEAN_DISTANCE","MAX_INNER_PRODUCT", "DOT_PRODUCT"]
 
@@ -263,6 +270,7 @@ def main():
         st.chat_message("user").write(query)
         #5. query를 session_state 'user'에 append 한다.
         st.session_state['chat_history'].append(('user',query))
+        
 
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
