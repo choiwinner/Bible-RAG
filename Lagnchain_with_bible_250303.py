@@ -28,8 +28,9 @@ import time
 
 def get_conversation_chain(vectorstore,data_list,query,st_memory):
    
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-01-21", temperature=0)
     #llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp", temperature=0)
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+    #llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
 
     template = """당신은 인공지능 ChatBOT으로 Question 내용에 대해서 대답합니다.
     대답은 Context에 있는 내용을 참조해서만 답변합니다.
