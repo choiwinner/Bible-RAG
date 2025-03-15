@@ -5,13 +5,14 @@ import streamlit as st
 from langchain.schema.runnable import RunnableMap
 from langchain.retrievers.multi_query import MultiQueryRetriever
 
-import google.generativeai as genai
+#import google.generativeai as genai
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 import os
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_community.document_loaders import TextLoader
+from langchain_core.prompts import PromptTemplate
 
 import re
 
@@ -25,6 +26,12 @@ from langchain.memory import ConversationBufferWindowMemory
 
 import pickle
 import time
+
+
+from google import genai
+from google.genai import types
+from io import BytesIO
+from PIL import Image
 
 def get_conversation_chain(vectorstore,data_list,query,st_memory):
    
@@ -75,13 +82,59 @@ def get_conversation_chain(vectorstore,data_list,query,st_memory):
     }) 
     | prompt | llm | StrOutputParser())
 
-
-    #실시간 출력(Stream)
-    response = ''
-    sentence = ''
-
     response = chain.invoke({'question': query,
                              'chat_history': memory.load_memory_variables({})['chat_history']})
+    
+    memory.save_context({"input": query}, {"output": response})
+
+    return response
+
+def make_image(response):
+    # API 키 설정
+    client = genai.Client(api_key=st.session_state.gemini_api_key)
+
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-01-21", temperature=0)
+
+    prompt_template = PromptTemplate(
+        template="""
+        The Section content is a story from the Bible. Based on the following section content, write an image generation prompt to create a cartoon image to represent this section. The prompt should be under 300 characters. Please write the prompt in English.
+        
+        Section content:
+        
+        {section_content}
+        
+        Prompt:""",
+        input_variables=["section_content"],
+    )
+    
+    image_prompt = llm.invoke(prompt_template.format(section_content=response))
+
+    contents = image_prompt.content
+
+    # Gemini 2.0 Flash Experimental 모델 사용
+    response = client.models.generate_content(
+        model="models/gemini-2.0-flash-exp",
+        contents=contents,
+        config=types.GenerateContentConfig(
+            response_modalities=['Text', 'Image'],
+            temperature=0.7,
+        )
+    )
+
+    # 응답 처리
+    for part in response.candidates[0].content.parts:
+        if part.text is not None:
+            print(part.text)
+        elif part.inline_data is not None:
+            image_bytes = part.inline_data.data
+            image = Image.open(BytesIO(part.inline_data.data))
+            st.image(image)
+
+def print_response(response):
+
+    #실시간 출력(Stream)
+
+    sentence = ''
     
     if '\n' not in response:
         st.write(response)
@@ -95,10 +148,9 @@ def get_conversation_chain(vectorstore,data_list,query,st_memory):
                 sentence = ''
             else:
                 sentence = sentence + chunk
-    
-    memory.save_context({"input": query}, {"output": response})
 
-    return response
+    # Streamlit 앱에 이미지 표시하기
+    #st.image(image, caption='이미지 캡션 입력')
 
 def handle_userinput(user_question):
     response = st.session_state.conversation({'question': user_question})
@@ -189,6 +241,8 @@ def main():
         st.session_state.document_list = []
     if "vector_option" not in st.session_state:
         st.session_state.vector_option = None
+    if "gemini_api_key" not in st.session_state:
+        st.session_state.gemini_api_key = None
 
     #윈도우 크기 k를 지정하면 최근 k개의 대화만 기억하고 이전 대화는 삭제
     if "memory" not in st.session_state:
@@ -197,17 +251,17 @@ def main():
                                                                  return_messages=True) 
 
     with st.sidebar:
-        gemini_api_key = st.text_input('Gemini_API_KEY를 입력하세요.', key="langchain_search_api_gemini", type="password")
+        st.session_state.gemini_api_key = st.text_input('Gemini_API_KEY를 입력하세요.', key="langchain_search_api_gemini", type="password")
         "[Get an Gemini API key](https://ai.google.dev/)"
         "[How to get Gemini API Key](https://luvris2.tistory.com/880)"
 
-        if (gemini_api_key[0:2] != 'AI') or (len(gemini_api_key) != 39):
+        if (st.session_state.gemini_api_key[0:2] != 'AI') or (len(st.session_state.gemini_api_key) != 39):
             st.warning('잘못된 key 입력', icon='⚠️')
         else:
             st.success('정상 key 입력', icon='👉')
 
         if process :=st.button("Process"):
-            if (gemini_api_key[0:2] != 'AI') or (len(gemini_api_key) != 39):
+            if (st.session_state.gemini_api_key[0:2] != 'AI') or (len(st.session_state.gemini_api_key) != 39):
                 st.error("잘못된 key 입력입니다. 다시 입력해 주세요.")
                 st.stop()
 
@@ -241,14 +295,15 @@ def main():
             
 
     #0. gemini api key Setting
-    if not gemini_api_key:
+    if not st.session_state.gemini_api_key:
         st.warning("Gemini API Key를 입력해 주세요.")
         st.stop()
 
-    genai.configure(api_key=gemini_api_key)
+    #genai.configure(api_key=gemini_api_key)
 
     #0. gemini api key Setting
-    os.environ["GOOGLE_API_KEY"] = gemini_api_key
+    os.environ["GOOGLE_API_KEY"] = st.session_state.gemini_api_key
+
 
     # 파일이 업로드되면 처리
     if st.session_state.vectorstore == None:
@@ -285,7 +340,11 @@ def main():
                     query,
                     st.session_state.memory)
                 
-                #st.write(st.session_state.memory.chat_memory.messages)
+                #response 출력
+                print_response(response)
+
+                #이미지 파일 만들기
+                make_image(response)
                 
                 end_time = time.time()
                 total_time = (end_time - start_time)
