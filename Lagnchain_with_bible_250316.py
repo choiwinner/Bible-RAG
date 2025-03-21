@@ -82,12 +82,20 @@ def get_conversation_chain(vectorstore,data_list,query,st_memory):
     }) 
     | prompt | llm | StrOutputParser())
 
-    response = chain.invoke({'question': query,
-                             'chat_history': memory.load_memory_variables({})['chat_history']})
+    #response = chain.invoke({'question': query,
+    #                         'chat_history': memory.load_memory_variables({})['chat_history']})
     
-    memory.save_context({"input": query}, {"output": response})
+    think_message_placeholder = st.empty() # DeltaGenerator 반환
+    
+    full_response = '' 
+    for chunk in chain.stream({'question': query,
+                            'chat_history': memory.load_memory_variables({})['chat_history']}):
+        full_response += chunk.content
+        think_message_placeholder.markdown(full_response)
+    
+    memory.save_context({"input": query}, {"output": full_response})
 
-    return response
+    return full_response
 
 def make_image(response):
     # API 키 설정
@@ -341,7 +349,7 @@ def main():
                     st.session_state.memory)
                 
                 #response 출력
-                print_response(response)
+                #print_response(response)
 
                 #이미지 파일 만들기
                 make_image(response)
