@@ -237,7 +237,7 @@ def load_bible(vector_distance_cal):
 def main():
 
     st.set_page_config(page_title="Lagnchain_with_bible", page_icon=":books:")
-    st.title("🦜🔗 Lagnchain_with_bible")
+    st.title("🦜🔗 Langchain_with_bible")
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
