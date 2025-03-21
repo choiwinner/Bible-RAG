@@ -1,4 +1,4 @@
-#streamlit run Lagnchain_with_bible_250303.py
+#streamlit run Lagnchain_with_bible_250316.py
 #실행 streamlit run Lagnchain_with_bible_250303.py --server.address=0.0.0.0 --server.port=8501
 import streamlit as st
 
@@ -90,7 +90,7 @@ def get_conversation_chain(vectorstore,data_list,query,st_memory):
     full_response = '' 
     for chunk in chain.stream({'question': query,
                             'chat_history': memory.load_memory_variables({})['chat_history']}):
-        full_response += chunk.content
+        full_response += chunk
         think_message_placeholder.markdown(full_response)
     
     memory.save_context({"input": query}, {"output": full_response})
