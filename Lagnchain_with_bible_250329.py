@@ -239,7 +239,7 @@ def load_bible(vector_distance_cal):
 
 def text_to_speech(text, language='ko'):
 
-    text_new = re.sub('[^a-zA-Z가-힣0-9.,:()]', ' ', text)
+    text_new = re.sub('[^a-zA-Z가-힣0-9.,:()?!]', ' ', text)
 
     # gTTS로 텍스트를 음성으로 변환
     tts = gTTS(text=text_new, lang=language)
