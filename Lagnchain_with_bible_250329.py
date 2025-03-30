@@ -33,6 +33,9 @@ from google.genai import types
 from io import BytesIO
 from PIL import Image
 
+from gtts import gTTS
+import io
+
 def get_conversation_chain(vectorstore,data_list,query,st_memory):
    
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-01-21", temperature=0)
@@ -234,6 +237,29 @@ def load_bible(vector_distance_cal):
 
     return data_load, vectorstore
 
+def text_to_speech(text, language='ko'):
+
+    text_new = re.sub('[^a-zA-Z가-힣0-9.,:()]', ' ', text)
+
+    # gTTS로 텍스트를 음성으로 변환
+    tts = gTTS(text=text_new, lang=language)
+    
+    # 메모리에 오디오 저장
+    audio_buffer = io.BytesIO()
+    tts.write_to_fp(audio_buffer)
+    audio_buffer.seek(0)
+
+    # 오디오 재생
+    st.audio(audio_buffer, format="audio/mp3")
+    
+    # 다운로드 버튼 추가
+    st.download_button(
+        label="오디오 다운로드",
+        data=audio_buffer,
+        file_name="output.mp3",
+        mime="audio/mp3"
+    )
+
 def main():
 
     st.set_page_config(page_title="Lagnchain_with_bible", page_icon=":books:")
@@ -251,12 +277,14 @@ def main():
         st.session_state.vector_option = None
     if "gemini_api_key" not in st.session_state:
         st.session_state.gemini_api_key = None
+    if "response" not in st.session_state:
+        st.session_state.response = None
+    if "voice_option" not in st.session_state:
+        st.session_state.voice_option = None
 
     #윈도우 크기 k를 지정하면 최근 k개의 대화만 기억하고 이전 대화는 삭제
     if "memory" not in st.session_state:
-        st.session_state.memory = ConversationBufferWindowMemory(memory_key="chat_history", 
-                                                                 k=4,
-                                                                 return_messages=True) 
+        st.session_state.memory = ConversationBufferWindowMemory(memory_key="chat_history", k=4,return_messages=True) 
 
     with st.sidebar:
         st.session_state.gemini_api_key = st.text_input('Gemini_API_KEY를 입력하세요.', key="langchain_search_api_gemini", type="password")
@@ -276,11 +304,14 @@ def main():
         if data_clear :=st.button("대화 클리어"):
             st.session_state.conversation = None
             st.session_state.chat_history = []
-            st.session_state.memory = ConversationBufferWindowMemory(memory_key="chat_history", 
-                                                                     k=4,
-                                                                     return_messages=True)
-            
+            st.session_state.memory = ConversationBufferWindowMemory(memory_key="chat_history", k=4,return_messages=True)
+            st.session_state.response = None
 
+        st.session_state.voice_option = st.radio(label='음성 생성 Option',
+                          options=['음성 생성', '음성 미생성'],
+                          index=1  # 기본 선택값은 'Banana'
+                          )
+            
         vector_option = ["EUCLIDEAN_DISTANCE","MAX_INNER_PRODUCT", "DOT_PRODUCT"]
 
         if vector_option_1 := st.selectbox("Select the vector distance cal method?",
@@ -342,7 +373,7 @@ def main():
                 start_time = time.time()
 
                 # chain 호출
-                response = get_conversation_chain(
+                st.session_state.response = get_conversation_chain(
                     st.session_state.vectorstore,
                     st.session_state.document_list,
                     query,
@@ -352,15 +383,25 @@ def main():
                 #print_response(response)
 
                 #이미지 파일 만들기
-                make_image(response)
-                
+                make_image(st.session_state.response)
+
+                #st.session_state.response = str(st.session_state.response)
+
+                #답변 음성 듣기
+                if len(st.session_state.response) > 5000:
+                    st.warning('답변 길이가 너무 길어서 음성 파일을 생성할 수 없습니다.')
+                else:
+                    if st.session_state.voice_option == '음성 생성':
+                        text_to_speech(text=st.session_state.response,language='ko')
+
                 end_time = time.time()
                 total_time = (end_time - start_time)
                 st.info(f"검색 소요 시간: {total_time}초")
 
                 #st.write(response)
                 #6. response session_state 'assistant'에 append 한다.
-                st.session_state['chat_history'].append(('assistant',response))
+                st.session_state['chat_history'].append(('assistant'
+                                                         ,st.session_state.response))
 
 if __name__ == '__main__':
     main()
