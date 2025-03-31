@@ -43,7 +43,7 @@ def get_conversation_chain(vectorstore,data_list,query,st_memory):
     #llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
 
     template = """당신은 인공지능 ChatBOT으로 Question 내용에 대해서 대답합니다.
-    대답은 Context에 있는 내용을 참조해서만 답변합니다.
+    대답은 Context에 있는 내용을 참조해서만 답변하고 마크다운으로 출력해 주세요.
     되도록이면 자세한 내용으로 대답하고 context의 있는 original source도 같이 보여주세요.
     #Chat history: 
     {chat_history}
@@ -104,11 +104,11 @@ def make_image(response):
     # API 키 설정
     client = genai.Client(api_key=st.session_state.gemini_api_key)
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-01-21", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp-image-generation", temperature=0)
 
     prompt_template = PromptTemplate(
         template="""
-        The Section content is a story from the Bible. Based on the following section content, write an image generation prompt to create a cartoon image to represent this section. The prompt should be under 300 characters. Please write the prompt in English.
+        The section content is a story from the Bible. Based on the following section content, create a prompt to generate a Ghibli Studio-style image to represent this section. Your prompt should be less than 300 characters. Write your prompt in English.
         
         Section content:
         
