@@ -34,6 +34,7 @@ from io import BytesIO
 from PIL import Image
 
 from gtts import gTTS
+import edge_tts
 import io
 
 def get_conversation_chain(vectorstore,data_list,query,st_memory):
@@ -43,8 +44,9 @@ def get_conversation_chain(vectorstore,data_list,query,st_memory):
     #llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
 
     template = """당신은 인공지능 ChatBOT으로 Question 내용에 대해서 대답합니다.
-    대답은 Context에 있는 내용을 참조해서만 답변하고 마크다운으로 출력해 주세요.
-    되도록이면 자세한 내용으로 대답하고 context의 있는 original source도 같이 보여주세요.
+    Context에 있는 내용을 참조해서만 대답합니다.
+    대답은 마크다운으로 출력합니다.
+    대답은 context의 있는 original source도 같이 출력합니다.
     #Chat history: 
     {chat_history}
     #Context: 
@@ -95,6 +97,7 @@ def get_conversation_chain(vectorstore,data_list,query,st_memory):
                             'chat_history': memory.load_memory_variables({})['chat_history']}):
         full_response += chunk
         think_message_placeholder.markdown(full_response)
+        #think_message_placeholder.text(full_response)
     
     memory.save_context({"input": query}, {"output": full_response})
 
@@ -260,6 +263,37 @@ def text_to_speech(text, language='ko'):
         mime="audio/mp3"
     )
 
+def text_to_speech2(text, voice_option):
+
+    text_new = re.sub('[^a-zA-Z가-힣0-9.,:()?!]', ' ', text)
+
+    if voice_option == '여성':
+        voice = "ko-KR-SunHiNeural" #여성
+
+    elif voice_option == '남성2':
+        voice = "ko-KR-InJoonNeural" #남성2
+
+    else:
+        voice = "ko-KR-HyunsuNeural" #남성3
+
+    # 음성 생성
+    tts = edge_tts.Communicate(text_new, voice)
+
+    # 메모리에 오디오 저장
+    tts.save_sync('output.mp3')
+
+    with open("output.mp3", "rb") as f:
+        audio_data = f.read()
+    
+    st.audio(audio_data, format="audio/mp3")
+    
+    st.download_button(
+        label="오디오 다운로드",
+        data=audio_data,
+        file_name="output.mp3",
+        mime="audio/mp3"
+    )
+
 def main():
 
     st.set_page_config(page_title="Lagnchain_with_bible", page_icon=":books:")
@@ -307,9 +341,9 @@ def main():
             st.session_state.memory = ConversationBufferWindowMemory(memory_key="chat_history", k=4,return_messages=True)
             st.session_state.response = None
 
-        st.session_state.voice_option = st.radio(label='음성 생성 Option',
-                          options=['음성 생성', '음성 미생성'],
-                          index=1  # 기본 선택값은 'Banana'
+        st.session_state.voice_option = st.radio(label='음성 생성 기능',
+                          options=['여성','남성1','남성2','남성3', '음성 미생성'],
+                          index=0  # 기본 선택값은 여성
                           )
             
         vector_option = ["EUCLIDEAN_DISTANCE","MAX_INNER_PRODUCT", "DOT_PRODUCT"]
@@ -390,9 +424,13 @@ def main():
                 #답변 음성 듣기
                 if len(st.session_state.response) > 5000:
                     st.warning('답변 길이가 너무 길어서 음성 파일을 생성할 수 없습니다.')
-                else:
-                    if st.session_state.voice_option == '음성 생성':
-                        text_to_speech(text=st.session_state.response,language='ko')
+                
+                elif st.session_state.voice_option == '남성1':
+                    text_to_speech(text=st.session_state.response,language='ko')
+                
+                elif st.session_state.voice_option != '음성 미생성':
+                    text_to_speech2(text=st.session_state.response,
+                                    voice_option=st.session_state.voice_option)
 
                 end_time = time.time()
                 total_time = (end_time - start_time)
