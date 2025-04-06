@@ -225,7 +225,9 @@ def load_bible(vector_distance_cal):
     with st.spinner("파일 불러오는 중..."):
         
         #임베딩 모델 불로오기
-        embeddings = HuggingFaceEmbeddings(model_name='jhgan/ko-sroberta-multitask')
+        embeddings = HuggingFaceEmbeddings(model_name='jhgan/ko-sroberta-multitask',
+                                          model_kwargs={'device': 'cpu'},
+                                          encode_kwargs={'normalize_embeddings': False})
         
         # 저장된 인덱스 로드(allow_dangerous_deserialization=True 필요)
         vectorstore = FAISS.load_local("Rag_data/bible_embed2", 
