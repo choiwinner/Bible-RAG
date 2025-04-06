@@ -7,13 +7,13 @@ from langchain.retrievers.multi_query import MultiQueryRetriever
 
 #import google.generativeai as genai
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import FAISS
-import os
+from langchain_community.vectorstores import FAISS
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_community.document_loaders import TextLoader
 from langchain_core.prompts import PromptTemplate
 
+import os
 import re
 
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -36,6 +36,7 @@ from PIL import Image
 from gtts import gTTS
 import edge_tts
 import io
+from sentence_transformers import SentenceTransformer
 
 def get_conversation_chain(vectorstore,data_list,query,st_memory):
    
@@ -225,9 +226,10 @@ def load_bible(vector_distance_cal):
     with st.spinner("파일 불러오는 중..."):
         
         #임베딩 모델 불로오기
+        #embeddings = SentenceTransformer('jhgan/ko-sroberta-multitask')
+        
         embeddings = HuggingFaceEmbeddings(model_name='jhgan/ko-sroberta-multitask',
-                                          model_kwargs={'device': 'cpu'},
-                                          encode_kwargs={'normalize_embeddings': False})
+                                          model_kwargs={'device': 'cpu'})
         
         # 저장된 인덱스 로드(allow_dangerous_deserialization=True 필요)
         vectorstore = FAISS.load_local("Rag_data/bible_embed2", 
