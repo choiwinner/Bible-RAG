@@ -353,7 +353,7 @@ def main():
 
     with st.sidebar:
         st.session_state.gemini_api_key = st.text_input('Gemini_API_KEY를 입력하세요.', key="langchain_search_api_gemini", type="password")
-        "[Get an Gemini API key](https://ai.google.dev/)"
+        "[Get an Gemini API key](https://aistudio.google.com/apikey)"
         "[How to get Gemini API Key](https://luvris2.tistory.com/880)"
 
         if (st.session_state.gemini_api_key[0:2] != 'AI') or (len(st.session_state.gemini_api_key) != 39):
