@@ -222,7 +222,7 @@ def make_vectorstore(data):
     
     return vectorstore
 
-def load_bible(vector_distance_cal):
+def load_bible():
     with st.spinner("파일 불러오는 중..."):
         
         #임베딩 모델 불로오기
@@ -234,7 +234,7 @@ def load_bible(vector_distance_cal):
         # 저장된 인덱스 로드(allow_dangerous_deserialization=True 필요)
         vectorstore = FAISS.load_local("Rag_data/bible_embed2", 
         embeddings,
-        distance_strategy=vector_distance_cal, 
+        distance_strategy=DistanceStrategy.EUCLIDEAN_DISTANCE, 
         allow_dangerous_deserialization=True)
 
         with open("Rag_data/bible_data2.pkl", 'rb') as f:
@@ -319,6 +319,8 @@ def main():
         st.session_state.response = None
     if "voice_option" not in st.session_state:
         st.session_state.voice_option = None
+    if "image_option" not in st.session_state:
+        st.session_state.image_option = None
 
     #윈도우 크기 k를 지정하면 최근 k개의 대화만 기억하고 이전 대화는 삭제
     if "memory" not in st.session_state:
@@ -349,28 +351,12 @@ def main():
                           options=['여성','남성1','남성2','남성3', '음성 미생성'],
                           index=0  # 기본 선택값은 여성
                           )
+        
+        st.session_state.image_option = st.radio(label='이미지 생성 기능',
+                  options=['이미지 생성', '이미지 미생성'],
+                  index=0  # 기본 선택값은 생성
+                  )
             
-        vector_option = ["EUCLIDEAN_DISTANCE","MAX_INNER_PRODUCT", "DOT_PRODUCT"]
-
-        if vector_option_1 := st.selectbox("Select the vector distance cal method?",
-                                           options=vector_option,
-                                           index=0):
-
-            st.info(f"You selected: {vector_option_1}")
-
-            if vector_option_1 == "EUCLIDEAN_DISTANCE":
-                #유클리드 거리(L2)
-                st.session_state.vector_option = DistanceStrategy.EUCLIDEAN_DISTANCE 
-                
-            if vector_option_1 == "MAX_INNER_PRODUCT":
-                #내적(코사인 유사도와 유사)
-                st.session_state.vector_option = DistanceStrategy.MAX_INNER_PRODUCT
-
-            if vector_option_1 == "DOT_PRODUCT":
-                #점곱(내적과 동일)
-                st.session_state.vector_option = DistanceStrategy.DOT_PRODUCT  
-            
-
     #0. gemini api key Setting
     if not st.session_state.gemini_api_key:
         st.warning("Gemini API Key를 입력해 주세요.")
@@ -385,7 +371,7 @@ def main():
     # 파일이 업로드되면 처리
     if st.session_state.vectorstore == None:
 
-        st.session_state.document_list, st.session_state.vectorstore = load_bible(st.session_state.vector_option)
+        st.session_state.document_list, st.session_state.vectorstore = load_bible()
 
     st.chat_message("assistant").write("안녕하세요. 무엇을 도와드릴까요?")
 
@@ -421,9 +407,10 @@ def main():
                 #print_response(response)
 
                 #이미지 파일 만들기
-                make_image(st.session_state.response)
-
-                #st.session_state.response = str(st.session_state.response)
+                if st.session_state.image_option == '이미지 생성':
+                    make_image(st.session_state.response)
+                else:
+                    pass
 
                 #답변 음성 듣기
                 if len(st.session_state.response) > 5000:
